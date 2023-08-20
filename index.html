@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIGHTY HANDER</title>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <button type="button" class="logo-btn">
+            <img src="/img/logo.png" alt="">
+        </button>
+        <div class="header-btn-group">
+            <button class="header-btn" onclick="showAll();" type="button">전체보기</button>
+            <button class="header-btn" onclick="showFalse();" type="button">이달의 반동분자</button>
+            <select id="cell-selector" class="header-select">
+                <option value="">크루원 찾기</option>
+            </select>
+        </div>
+    </header>
+    <div id="cell-chk">
+    </div>
+    <script>
+        $(document).ready(function(){
+            let totalData = '';
+            let dataHtml = '';
+
+            google.charts.load("current", { packages: ["corechart"] }).then(() => {
+            let query = new google.visualization.Query(
+                `http://spreadsheets.google.com/tq?key=1ixwTTYPNl-6Z7gHrK-2m0E6AM81sKL5T2hybzcOj21E&pub=1`
+            );
+
+                query.send((response) => {
+                    if (response.isError()) {
+                    console.error(
+                        "Error in query: " +
+                        response.getMessage() +
+                        " " +
+                        response.getDetailedMessage()
+                    );
+                    return;
+                    }
+
+                    let dataTable = response.getDataTable().toJSON();
+                    let jsonData = JSON.parse(dataTable);
+                    let cols = jsonData.cols.map((col) => col.label);
+                    let rows = jsonData.rows.map((row) => {
+                        let newRow;
+
+                        row.c.forEach((obj, index) => {
+                            if (obj == null || obj == undefined) return; //빈값이 경우 정지
+                            obj[cols[index]] = "f" in obj ? obj["f"] : obj["v"];
+                            ["f", "v"].forEach((each) => delete obj[each]);
+                            newRow = { ...newRow, ...obj };
+                        });
+
+                        return newRow;
+                    });
+                    let totalDataHead = jsonData.rows[0].c.map(item => item ? Object.values(item)[0] : item).splice(2);
+                        totalDataHead = totalDataHead.splice(0,totalDataHead.length-2);
+                    let totalData =jsonData.rows.splice(1);
+                    let dataAry = [];
+                    for(var i=0; i<totalData.length;i++){
+                        dataAry.push(totalData[i].c.map(item => item ? Object.values(item)[0] : item));
+                    };
+                    
+                    for(var i=0; i<dataAry.length; i++){
+                        dataRow = dataAry[i].splice(2,dataAry[i].length-4);
+                        let warnClass = '';
+                        if(dataAry[i][dataAry[i].length-2] != '정상'){
+                            warnClass = 'cell-warn'
+                        };
+                        dataHtml += '<div class="cell-item '+warnClass+'" id="'+dataAry[i][0]+'">';
+                        dataHtml += '<h3 class="cell-subject"><span class="subject-txt">'+dataAry[i][0]+'</span><span class="cell-statue">'+dataAry[i][dataAry[i].length-2]+'</span><span class="cell-perc">'+dataAry[i][dataAry[i].length-1]+'</span></h3>';
+                        if(dataAry[i][1] != null){
+                            dataHtml += '<p class="cell-desc">'+dataAry[i][1]+'</p>';
+                        };
+                        dataHtml += "<div class='cell-chk-wrapper'>"
+                        dataHtml += "<ul class='cell-chk-list'>"
+                        for(var k=0; k<dataRow.length;k++){
+                            if(dataRow[k] != null){
+                                let falseClass = '';
+                                if(dataRow[k] == '불참'){
+                                    falseClass='cell-false'
+                                }
+                                dataHtml += "<li class='cell-chk-item "+falseClass+"'>";
+                                dataHtml += "   <dl class='cell-chk-inn'>"
+                                dataHtml += "       <dt class='cell-chk-head'>"+totalDataHead[k]+"</dt>"
+                                dataHtml += "       <dd class='cell-chk-desc'>"+dataRow[k]+"</dd>"
+                                dataHtml += "   </dl>"
+                                dataHtml += "</li>";
+                            }
+                        };
+                        dataHtml += "</ul>";
+                        dataHtml += '</div>';
+                        dataHtml += '</div>';
+                    };
+                    $('#cell-chk').append(dataHtml)
+
+                    let ceItem = $('.cell-item');
+                    // for(let i=0; i<ceItem.length; i++){
+                    //     if(ceItem.eq(i).find('.cell-chk-item').length > 4){
+                    //         ceItem.eq(i).find('.cell-chk-wrapper').addClass('misted')
+                    //         ceItem.eq(i).find('.cell-chk-wrapper').css({
+                    //             height:75
+                    //         });
+                    //         ceItem.eq(i).append('<button class="toggle-chk">더보기</button>');
+                    //     };
+                    // };
+                    // $(document).on('click','.toggle-chk',function(){
+                    //     if($(this).parents('.cell-item').hasClass('toggle-on')){
+                    //         $(this).parents('.cell-item').removeClass('toggle-on')
+                    //         $(this).text('더보기');
+                    //         $(this).parents('.cell-item').find('.cell-chk-wrapper').addClass('misted').stop().animate({
+                    //             height:75
+                    //         })
+                    //     }else{
+                    //         $(this).parents('.cell-item').addClass('toggle-on')
+                    //         $(this).text('접기');
+                    //         $(this).parents('.cell-item').find('.cell-chk-wrapper').removeClass('misted').stop().animate({
+                    //             height:($(this).parents('.cell-item').find('.cell-chk-list').outerHeight())
+                    //         })
+                    //     }
+                    // });
+
+                    headerScroll();
+                });
+            });
+        });
+
+
+        function headerScroll(){
+            let scrollHtml = '';
+            let scCell = $('.cell-item');
+            for(let i=0; i<scCell.length; i++){
+                let taCell = scCell.eq(i);
+                scrollHtml += "<option value='"+taCell.attr('id')+"'>"+taCell.find('.subject-txt').text()+"</option>";
+            };
+            $('#cell-selector').append(scrollHtml);
+            $('#cell-selector').change(function(){
+                let scTarget = $(this).val();
+                $('body,html').stop().animate({
+                    scrollTop:$('#'+scTarget).offset().top-$('header').outerHeight()
+                })
+            });
+        };
+
+        function showFalse(){
+            $('.cell-item').hide();
+            $('.cell-item.cell-warn').show();
+        };
+        function showAll(){
+            $('.cell-item').show();
+        };
+    </script>
+</body>
+</html>
